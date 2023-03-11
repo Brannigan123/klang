@@ -10,12 +10,12 @@ identation      = ${ NEWLINE ~ PEEK_ALL }
 identation_push = ${ identation ~ PUSH(spaces) }
 
 arrow_right = @{ "->" | "→" }
-for_all     = @{ ("kwa" ~ "kila") | "∀" }
+for_all     = { ("kwa" ~ "kila") | "∀" }
 in          = @{ "katika" | "∈" }
 where       = @{ ("amba" ~ ("ye" | "o" | "cho" | "vyo" | "lo" | "yo" | "zo" | "po" | "ko" | "mo")) | ":" }
 return      = @{ "rejesha" | "<-" | "←" }
 stop        = @{ "rejea" | "∎" }
-while       = @{ "kama" ~ "bado" }
+while       = { "kama" ~ "bado" }
 if          = @{ "kama" }
 else        = @{ "ama" }
 true        = @{ "kweli" }
