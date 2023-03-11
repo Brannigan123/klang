@@ -67,9 +67,11 @@ logical_and = { equality ~ ("&" ~ equality)* }
 
 equality = { comparison ~ (("!=" | "==") ~ comparison)* }
 
-comparison = { term ~ ((">=" | ">" | "<=" | "<") ~ term)* }
+comparison = { range ~ ((">=" | ">" | "<=" | "<") ~ range)* }
 
-term = { factor ~ (("-" | "+") ~ factor)* }
+range = { term ~ (".." ~ term)? }
+
+term  = { factor ~ (("-" | "+") ~ factor)* }
 
 factor = { unary ~ (("/" | "*") ~ unary)* }
 
