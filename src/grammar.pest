@@ -80,4 +80,10 @@ call_arguments      = { "(" ~ expr_list? ~ ")" }
 index_arguments     = { "[" ~ expr_list? ~ "]" }
 named_member_access = { "." ~ identifier }
 
-primary = { number | false | true | identifier | "(" ~ expr_list ~ ")" }
+primary = { number | false | true | identifier | array_literal | dictionary_literal | "(" ~ expr_list ~ ")" }
+
+array_literal = { "[" ~ (array_entry ~ ("," ~ array_entry)*)? ~ "]" }
+array_entry   = { ".."? ~ expr }
+
+dictionary_literal = { "{" ~ (dictionary_entry ~ ("," ~ dictionary_entry)*)? ~ "}" }
+dictionary_entry   = { (".." ~ expr) | (expr ~ ":" ~ expr) }
