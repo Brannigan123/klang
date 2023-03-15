@@ -35,16 +35,16 @@ compound_function   = { function_parameters ~ statement_block }
 
 program_file    =  { SOI ~ (spaces? ~ NEWLINE)* ~ statements ~ (spaces? ~ NEWLINE)* ~ EOI }
 statements      = _{ statement ~ (next_statement)* }
-statement       =  { loop_statement | branching_statement | return_statement | function_declaration | variable_declaration | expr_statement }
-statement_block =  { identation_push ~ statements ~ DROP }
+statement       = _{ loop_statement | branching_statement | return_statement | function_declaration | variable_declaration | expr_statement }
+statement_block = _{ identation_push ~ statements ~ DROP }
 next_statement  = _{ identation ~ statement }
 
-loop_statement       = { for_in_statement | while_statement }
-branching_statement  = { if_statement }
-return_statement     = { stop | (return ~ expr) }
-function_declaration = { identifier ~ function }
-variable_declaration = { identifier_list ~ "=" ~ expr }
-expr_statement       = { expr }
+loop_statement       = _{ for_in_statement | while_statement }
+branching_statement  = _{ if_statement }
+return_statement     =  { stop | (return ~ expr) }
+function_declaration =  { identifier ~ function }
+variable_declaration =  { identifier_list ~ "=" ~ expr }
+expr_statement       =  { expr }
 
 if_statement             = { if_statement_if_clause ~ if_statement_elif_clause* ~ if_statement_else_clause? }
 if_statement_if_clause   = { if ~ expr ~ statement_block }
@@ -59,7 +59,7 @@ expr_list = { expr ~ ("," ~ expr)* }
 
 if_expr = { /* assignment_expr */ logical_or ~ (if ~ expr ~ ("," ~ else ~ expr ~ if ~ expr)* ~ "," ~ else ~ expr)? }
 
-/*assignment_expr = { ((call ~ ".")? ~ identifier ~ "=" ~ assignment_expr) | logical_or }*/
+/* assignment_expr = { ((call ~ ".")? ~ identifier ~ "=" ~ assignment_expr) | logical_or } */
 
 logical_or = { logical_and ~ ("|" ~ logical_and)* }
 
