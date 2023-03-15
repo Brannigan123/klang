@@ -6,18 +6,18 @@ singleline_comment = _{ "#" ~ (!NEWLINE ~ ANY)* }
 multiline_comment  = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
 COMMENT            = _{ singleline_comment | multiline_comment }
 
-arrow_right = @{ "->" | "→" }
-for_all     =  { ("kwa" ~ "kila") | "∀" }
-in          = @{ "katika" | "∈" }
-where       = @{ ("amba" ~ ("ye" | "o" | "cho" | "vyo" | "lo" | "yo" | "zo" | "po" | "ko" | "mo")) | ":" }
-return      = @{ "rejesha" | "<-" | "←" }
-stop        = @{ "rejea" | "∎" }
-while       =  { "kama" ~ "bado" }
-if          = @{ "kama" }
-elif        =  { "au" ~ "kama" }
-else        = @{ "ama" }
-true        = @{ "kweli" }
-false       = @{ "wongo" }
+arrow_right   = @{ "->" | "→" }
+for_all       =  { ("kwa" ~ "kila") | "∀" }
+in            = @{ "katika" | "∈" }
+where         = @{ ("amba" ~ ("ye" | "o" | "cho" | "vyo" | "lo" | "yo" | "zo" | "po" | "ko" | "mo")) | ":" }
+return        = @{ "rejesha" | "<-" | "←" }
+stop          = @{ "rejea" | "∎" }
+while         =  { "kama" ~ "bado" }
+if            = @{ "kama" }
+elif          =  { "au" ~ "kama" }
+else          = @{ "ama" }
+true_literal  = @{ "kweli" }
+false_literal = @{ "wongo" }
 
 number          = @{ int ~ ("." ~ ASCII_DIGIT*)? ~ (^"e" ~ int)? }
 int             = @{ ("+" | "-")? ~ ASCII_DIGIT+ }
@@ -97,7 +97,7 @@ call_arguments      = { "(" ~ expr_list? ~ ")" }
 index_arguments     = { "[" ~ expr_list? ~ "]" }
 named_member_access = { "." ~ identifier }
 
-primary = _{ number | false | true | identifier | array_literal | dictionary_literal | tuple_literal }
+primary = _{ number | false_literal | true_literal | identifier | array_literal | dictionary_literal | tuple_literal }
 
 array_literal = { "[" ~ (array_entry ~ ("," ~ array_entry)*)? ~ "]" }
 array_entry   = { ".."? ~ expr }
