@@ -1,13 +1,10 @@
 spaces     = _{ (" " | "\t")+ }
-line_join  = _{ "\\" ~ spaces? ~ ("\r"? ~ "\n" | "\r") }
+line_join  = _{ "\\" ~ spaces? ~ NEWLINE }
 WHITESPACE = _{ line_join | spaces }
 
 singleline_comment = _{ "#" ~ (!NEWLINE ~ ANY)* }
 multiline_comment  = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
 COMMENT            = _{ singleline_comment | multiline_comment }
-
-identation      = ${ NEWLINE ~ PEEK_ALL }
-identation_push = ${ identation ~ PUSH(spaces) }
 
 arrow_right = @{ "->" | "→" }
 for_all     =  { ("kwa" ~ "kila") | "∀" }
@@ -17,6 +14,7 @@ return      = @{ "rejesha" | "<-" | "←" }
 stop        = @{ "rejea" | "∎" }
 while       =  { "kama" ~ "bado" }
 if          = @{ "kama" }
+elif        =  { "au" ~ "kama" }
 else        = @{ "ama" }
 true        = @{ "kweli" }
 false       = @{ "wongo" }
@@ -33,11 +31,10 @@ function_parameters = { "(" ~ (identifier_list ~ item_filter?)? ~ ")" }
 simple_function     = { function_parameters ~ arrow_right ~ expr }
 compound_function   = { function_parameters ~ statement_block }
 
-program_file    =  { SOI ~ (spaces? ~ NEWLINE)* ~ statements ~ (spaces? ~ NEWLINE)* ~ EOI }
-statements      = _{ statement ~ (next_statement)* }
+program_file    =  { SOI ~ NEWLINE* ~ statements ~ NEWLINE* ~ EOI }
+statements      = _{ statement ~ (NEWLINE* ~ statement)* }
 statement       = _{ loop_statement | branching_statement | return_statement | function_declaration | variable_declaration | expr_statement }
-statement_block = _{ identation_push ~ statements ~ DROP }
-next_statement  = _{ identation ~ statement }
+statement_block = _{ NEWLINE* ~ "{" ~ NEWLINE* ~ statements ~ NEWLINE* ~ "}" ~ NEWLINE* }
 
 loop_statement       = _{ for_in_statement | while_statement }
 branching_statement  = _{ if_statement }
@@ -48,16 +45,16 @@ expr_statement       =  { expr }
 
 if_statement             = { if_statement_if_clause ~ if_statement_elif_clause* ~ if_statement_else_clause? }
 if_statement_if_clause   = { if ~ expr ~ statement_block }
-if_statement_elif_clause = { if ~ else ~ expr ~ statement_block }
+if_statement_elif_clause = { elif ~ expr ~ statement_block }
 if_statement_else_clause = { else ~ statement_block }
 
 for_in_statement = { for_all ~ identifier_list ~ in ~ expr ~ item_filter? ~ statement_block? }
 while_statement  = { while ~ expr ~ item_filter? ~ statement_block }
 
-expr      = { if_expr }
-expr_list = { expr ~ ("," ~ expr)* }
+expr      = _{ if_expr }
+expr_list = _{ expr ~ ("," ~ expr)* }
 
-if_expr = { /* assignment_expr */ logical_or ~ (if ~ expr ~ ("," ~ else ~ expr ~ if ~ expr)* ~ "," ~ else ~ expr)? }
+if_expr = { /* assignment_expr */ logical_or ~ ("?" ~ expr ~ ":" ~ expr)? }
 
 /* assignment_expr = { ((call ~ ".")? ~ identifier ~ "=" ~ assignment_expr) | logical_or } */
 
@@ -65,17 +62,35 @@ logical_or = { logical_and ~ ("|" ~ logical_and)* }
 
 logical_and = { equality ~ ("&" ~ equality)* }
 
-equality = { comparison ~ (("!=" | "==") ~ comparison)* }
+equality    =  { comparison ~ (equality_op ~ comparison)* }
+equality_op = _{ eq | neq }
+eq          = @{ "==" }
+neq         = @{ "!=" }
 
-comparison = { range ~ ((">=" | ">" | "<=" | "<") ~ range)* }
+comparison    =  { range ~ (comparison_op ~ range)* }
+comparison_op = _{ ge | gt | le | lt }
+ge            = @{ ">=" }
+gt            = @{ ">" }
+le            = @{ "<=" }
+lt            = @{ "<" }
 
 range = { term ~ (".." ~ term)? }
 
-term = { factor ~ (("-" | "+") ~ factor)* }
+term    =  { factor ~ (term_op ~ factor)* }
+term_op = _{ add | minus }
+add     = @{ "+" }
+minus   = @{ "-" }
 
-factor = { unary ~ (("/" | "*") ~ unary)* }
+factor    =  { unary ~ (factor_op ~ unary)* }
+factor_op = _{ divide | multiply | remainder }
+divide    = @{ "/" }
+multiply  = @{ "*" }
+remainder = @{ "%" }
 
-unary = { ("!" | "-") ~ unary | call }
+unary    =  { unary_op ~ unary | call }
+unary_op = _{ not | negate }
+not      = @{ "!" }
+negate   = @{ "-" }
 
 call                = { primary ~ (call_arguments | index_arguments | named_member_access)* }
 call_arguments      = { "(" ~ expr_list? ~ ")" }
