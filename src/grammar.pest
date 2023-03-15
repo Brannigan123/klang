@@ -10,12 +10,12 @@ identation      = ${ NEWLINE ~ PEEK_ALL }
 identation_push = ${ identation ~ PUSH(spaces) }
 
 arrow_right = @{ "->" | "→" }
-for_all     = { ("kwa" ~ "kila") | "∀" }
+for_all     =  { ("kwa" ~ "kila") | "∀" }
 in          = @{ "katika" | "∈" }
 where       = @{ ("amba" ~ ("ye" | "o" | "cho" | "vyo" | "lo" | "yo" | "zo" | "po" | "ko" | "mo")) | ":" }
 return      = @{ "rejesha" | "<-" | "←" }
 stop        = @{ "rejea" | "∎" }
-while       = { "kama" ~ "bado" }
+while       =  { "kama" ~ "bado" }
 if          = @{ "kama" }
 else        = @{ "ama" }
 true        = @{ "kweli" }
@@ -57,9 +57,9 @@ while_statement  = { while ~ expr ~ item_filter? ~ statement_block }
 expr      = { if_expr }
 expr_list = { expr ~ ("," ~ expr)* }
 
-if_expr = { assignment_expr ~ (if ~ expr ~ ("," ~ else ~ expr ~ if ~ expr)* ~ "," ~ else ~ expr)? }
+if_expr = { /* assignment_expr */ logical_or ~ (if ~ expr ~ ("," ~ else ~ expr ~ if ~ expr)* ~ "," ~ else ~ expr)? }
 
-assignment_expr = { ((call ~ ".")? ~ identifier ~ "=" ~ assignment_expr) | logical_or }
+/*assignment_expr = { ((call ~ ".")? ~ identifier ~ "=" ~ assignment_expr) | logical_or }*/
 
 logical_or = { logical_and ~ ("|" ~ logical_and)* }
 
@@ -71,7 +71,7 @@ comparison = { range ~ ((">=" | ">" | "<=" | "<") ~ range)* }
 
 range = { term ~ (".." ~ term)? }
 
-term  = { factor ~ (("-" | "+") ~ factor)* }
+term = { factor ~ (("-" | "+") ~ factor)* }
 
 factor = { unary ~ (("/" | "*") ~ unary)* }
 
