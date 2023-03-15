@@ -60,6 +60,7 @@ pub enum Expression {
     BooleanLiteral(bool),
     ArrayExpr(Vec<ArrayEntry>),
     DictionaryExpr(Vec<DictionaryEntry>),
+    TupleExpr(Vec<Expression>),
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -95,6 +96,7 @@ pub enum InfixOp {
     Minus,
     Divide,
     Times,
+    Remainder,
 }
 
 #[derive(PartialEq, Debug, Eq, Clone)]
