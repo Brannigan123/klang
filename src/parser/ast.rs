@@ -33,6 +33,7 @@ pub type Expressions = Vec<Expression>;
 pub enum Expression {
     FunctionExpr {
         params: IdentifierList,
+        filter: Option<Box<Expression>>,
         body: Statements,
     },
     IfExpr {
