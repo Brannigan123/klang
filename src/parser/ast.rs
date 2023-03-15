@@ -31,6 +31,10 @@ pub type Expressions = Vec<Expression>;
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum Expression {
+    FunctionExpr {
+        params: IdentifierList,
+        body: Statements,
+    },
     IfExpr {
         cond: Box<Expression>,
         consequence: Box<Expression>,
