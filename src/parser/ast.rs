@@ -39,8 +39,6 @@ pub enum Expression {
     IfExpr {
         cond: Box<Expression>,
         consequence: Box<Expression>,
-        alt_conds: Expressions,
-        alt_consequencess: Expressions,
         fallback_consequnce: Box<Expression>,
     },
     InfixExpr(InfixOp, Box<Expression>, Box<Expression>),
