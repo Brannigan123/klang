@@ -43,7 +43,7 @@ loop_statement       = { for_in_statement | while_statement }
 branching_statement  = { if_statement }
 return_statement     = { stop | (return ~ expr) }
 function_declaration = { identifier ~ function }
-variable_declaration = { identifier_list ~ ":=" ~ expr }
+variable_declaration = { identifier_list ~ "=" ~ expr }
 expr_statement       = { expr }
 
 if_statement             = { if_statement_if_clause ~ if_statement_elif_clause* ~ if_statement_else_clause? }
