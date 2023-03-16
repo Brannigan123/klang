@@ -14,6 +14,7 @@ pub enum Object {
     Boolean(bool),
     String(String),
     Array(Vec<Object>),
+    Tuple(Vec<Object>),
     Dictionary(HashMap<Object, Object>),
     Function(Vec<Identifier>, Program, Rc<RefCell<Environment>>),
     Builtin(String, usize, BuiltinFunction),
@@ -59,6 +60,18 @@ impl fmt::Display for Object {
                     }
                 }
                 fmt_string.push(']');
+                write!(f, "{}", fmt_string)
+            }
+            Object::Tuple(ref v) => {
+                let mut fmt_string = String::new();
+                fmt_string.push('(');
+                for (i, o) in v.iter().enumerate() {
+                    fmt_string.push_str(format!("{}", o).as_str());
+                    if i < v.len() - 1 {
+                        fmt_string.push_str(", ");
+                    }
+                }
+                fmt_string.push(')');
                 write!(f, "{}", fmt_string)
             }
             Object::Dictionary(ref hashmap) => {
