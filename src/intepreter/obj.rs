@@ -4,7 +4,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
-use crate::parser::ast::{Identifier, Program};
+use crate::parser::ast::{Expression, Identifier, Statements};
 
 use super::env::Environment;
 
@@ -16,7 +16,12 @@ pub enum Object {
     Array(Vec<Object>),
     Tuple(Vec<Object>),
     Dictionary(HashMap<Object, Object>),
-    Function(Vec<Identifier>, Program, Rc<RefCell<Environment>>),
+    Function(
+        Vec<Identifier>,
+        Option<Expression>,
+        Statements,
+        Rc<RefCell<Environment>>,
+    ),
     Builtin(String, usize, BuiltinFunction),
     Null,
     ReturnValue(Box<Object>),
@@ -86,7 +91,7 @@ impl fmt::Display for Object {
                 fmt_string.push('}');
                 write!(f, "{}", fmt_string)
             }
-            Object::Function(_, _, _) => write!(f, "[function]"),
+            Object::Function(_, _, _, _) => write!(f, "[function]"),
             Object::Builtin(ref name, _, _) => write!(f, "[built-in function: {}]", *name),
             Object::Null => write!(f, "null"),
             Object::ReturnValue(ref o) => write!(f, "{}", *o),
