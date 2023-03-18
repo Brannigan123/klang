@@ -398,6 +398,26 @@ fn gen_primary_expr_ast(parsed: Pair<Rule>) -> Expression {
             }
             Expression::TupleExpr(entries)
         }
+        Rule::string => {
+            let mut parts = vec![];
+            for entry in parsed.into_inner() {
+                match entry.as_rule() {
+                    Rule::string_literal => parts.push(ast::StringPart::Literal(
+                        entry.as_span().as_str().to_string(),
+                    )),
+                    Rule::string_expression_interpolation => {
+                        parts.push(ast::StringPart::Expression(gen_expr_ast(
+                            entry.into_inner().next().unwrap(),
+                        )))
+                    }
+                    Rule::string_variable_interpolation => parts.push(ast::StringPart::Variable(
+                        gen_identifier_node(entry.into_inner().next().unwrap()),
+                    )),
+                    _ => unreachable!(),
+                }
+            }
+            Expression::StringExpr(parts)
+        }
         _ => unreachable!(),
     }
 }

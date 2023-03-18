@@ -58,9 +58,17 @@ pub enum Expression {
     IdentifierExpr(Identifier),
     NumberLiteral(f64),
     BooleanLiteral(bool),
+    StringExpr(Vec<StringPart>),
     ArrayExpr(Vec<ArrayEntry>),
     DictionaryExpr(Vec<DictionaryEntry>),
     TupleExpr(Vec<Expression>),
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub enum StringPart {
+    Literal(String),
+    Variable(Identifier),
+    Expression(Expression),
 }
 
 #[derive(PartialEq, Debug, Clone)]
