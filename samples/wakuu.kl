@@ -1,0 +1,8 @@
+Mtu(jina, mwaka_wa_kuzaliwa) -> { "jina" : jina, "umri": 2023 - mwaka_wa_kuzaliwa }
+
+orodha = [ Mtu("Jennah", 2000), Mtu("Juma", 1997), Mtu("Alison", 1998), Mtu("Mae", 2009)]
+andika(orodha)
+
+kwa kila mtu katika orodha : mtu.umri > 18 {
+    andika(mtu)
+}
