@@ -635,14 +635,23 @@ impl Evaluator {
     pub fn otb(object: Object) -> Result<bool, Object> {
         match object {
             Object::Boolean(b) => Ok(b),
+            Object::Number(n) => Ok(n > 0.0),
+            Object::String(s) => Ok(!s.is_empty()),
+            Object::Array(v) | Object::Tuple(v) => Ok(!v.is_empty()),
+            Object::Dictionary(v) => Ok(!v.is_empty()),
+            Object::ReturnValue(v) => Self::otb(*v),
+            Object::Function(_, _, _, _) | Object::Builtin(_, _, _) => Ok(true),
+            Object::Null => Ok(false),
             Object::Error(s) => Err(Object::Error(s)),
-            b => Err(Object::Error(format!("{} is not a bool", b))),
         }
     }
 
     pub fn otn(object: Object) -> Result<f64, Object> {
         match object {
             Object::Number(n) => Ok(n),
+            Object::String(s) => s
+                .parse()
+                .map_err(|_| Object::Error(format!("{} is not an Number", s))),
             Object::Error(s) => Err(Object::Error(s)),
             i => Err(Object::Error(format!("{} is not an Number", i))),
         }
@@ -664,5 +673,9 @@ impl Evaluator {
             Object::Error(s) => Object::Error(s),
             x => Object::Error(format!("{} is not hashable", x)),
         }
+    }
+
+    pub fn ots(object: Object) -> String {
+        format!("{}", object)
     }
 }
