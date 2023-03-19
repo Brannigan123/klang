@@ -21,6 +21,7 @@ impl BuiltinsFunctions {
         vec![
             add_builtin("andika", 1, bprint_fn),
             add_builtin("soma", 1, bread_fn),
+            add_builtin("soma_namba", 1, bread_num_fn),
             add_builtin("urefu", 1, blen_fn),
         ]
     }
@@ -63,6 +64,23 @@ fn bread_fn(args: Vec<Object>) -> Result<Object, String> {
         _ => Err(String::from("")), // TODO error message
     }
 }
+
+fn bread_num_fn(args: Vec<Object>) -> Result<Object, String> {
+    match args.get(0) {
+        Some(Object::String(t)) => {
+            println!("{}", t);
+            let input: f64 = read!("{}\n");
+            Ok(Object::Number(input))
+        }
+        Some(o) => {
+            println!("{}", o);
+            let input: f64 = read!("{}\n");
+            Ok(Object::Number(input))
+        }
+        _ => Err(String::from("")), // TODO error message
+    }
+}
+
 
 fn blen_fn(args: Vec<Object>) -> Result<Object, String> {
     match args.get(0) {
