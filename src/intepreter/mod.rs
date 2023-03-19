@@ -144,14 +144,14 @@ impl Evaluator {
         fallback_conse: Option<Statements>,
     ) -> Object {
         let matched = self.eval_expr(cond);
-        match self.otb(matched) {
+        match Evaluator::otb(matched) {
             Ok(b) => {
                 if b {
                     self.eval_blockstmt(conse)
                 } else {
                     for (cond, conse) in alt_cond.into_iter().zip(alt_conse.into_iter()) {
                         let matched = self.eval_expr(cond);
-                        match self.otb(matched) {
+                        match Evaluator::otb(matched) {
                             Ok(b) => {
                                 if b {
                                     return self.eval_blockstmt(conse);
@@ -201,7 +201,7 @@ impl Evaluator {
                 self.register_ident(id, val);
                 if let Some(f) = filter.clone() {
                     let matched = self.eval_expr(f);
-                    match self.otb(matched) {
+                    match Evaluator::otb(matched) {
                         Ok(b) => {
                             if !b {
                                 continue;
@@ -228,7 +228,7 @@ impl Evaluator {
     ) -> Object {
         loop {
             let matched = self.eval_expr(cond.clone());
-            match self.otb(matched) {
+            match Evaluator::otb(matched) {
                 Ok(b) => {
                     if !b {
                         break;
@@ -238,7 +238,7 @@ impl Evaluator {
             }
             if let Some(f) = filter.clone() {
                 let matched = self.eval_expr(f);
-                match self.otb(matched) {
+                match Evaluator::otb(matched) {
                     Ok(b) => {
                         if !b {
                             continue;
@@ -315,7 +315,7 @@ impl Evaluator {
         fallback_conse: Expression,
     ) -> Object {
         let matched = self.eval_expr(cond);
-        match self.otb(matched) {
+        match Evaluator::otb(matched) {
             Ok(b) => {
                 if b {
                     self.eval_expr(conse)
@@ -330,11 +330,11 @@ impl Evaluator {
     pub fn eval_prefix(&mut self, prefix: &PrefixOp, expr: Expression) -> Object {
         let object = self.eval_expr(expr);
         match *prefix {
-            PrefixOp::Not => match self.otb(object) {
+            PrefixOp::Not => match Evaluator::otb(object) {
                 Ok(b) => Object::Boolean(!b),
                 Err(err) => err,
             },
-            PrefixOp::Negate => match self.otn(object) {
+            PrefixOp::Negate => match Evaluator::otn(object) {
                 Ok(i) => Object::Number(-i),
                 Err(err) => err,
             },
@@ -347,32 +347,32 @@ impl Evaluator {
         match *infix {
             InfixOp::Plus => self.object_add(object1, object2),
             InfixOp::Minus => {
-                let n1 = self.otn(object1);
-                let n2 = self.otn(object2);
+                let n1 = Evaluator::otn(object1);
+                let n2 = Evaluator::otn(object2);
                 match (n1, n2) {
                     (Ok(n1), Ok(n2)) => Object::Number(n1 - n2),
                     (Err(err), _) | (_, Err(err)) => err,
                 }
             }
             InfixOp::Divide => {
-                let n1 = self.otn(object1);
-                let n2 = self.otn(object2);
+                let n1 = Evaluator::otn(object1);
+                let n2 = Evaluator::otn(object2);
                 match (n1, n2) {
                     (Ok(n1), Ok(n2)) => Object::Number(n1 / n2),
                     (Err(err), _) | (_, Err(err)) => err,
                 }
             }
             InfixOp::Remainder => {
-                let n1 = self.otn(object1);
-                let n2 = self.otn(object2);
+                let n1 = Evaluator::otn(object1);
+                let n2 = Evaluator::otn(object2);
                 match (n1, n2) {
                     (Ok(n1), Ok(n2)) => Object::Number(n1 % n2),
                     (Err(err), _) | (_, Err(err)) => err,
                 }
             }
             InfixOp::Times => {
-                let n1 = self.otn(object1);
-                let n2 = self.otn(object2);
+                let n1 = Evaluator::otn(object1);
+                let n2 = Evaluator::otn(object2);
                 match (n1, n2) {
                     (Ok(n1), Ok(n2)) => Object::Number(n1 * n2),
                     (Err(err), _) | (_, Err(err)) => err,
@@ -381,40 +381,40 @@ impl Evaluator {
             InfixOp::Eq => Object::Boolean(object1 == object2),
             InfixOp::Neq => Object::Boolean(object1 != object2),
             InfixOp::Geq => {
-                let n1 = self.otn(object1);
-                let n2 = self.otn(object2);
+                let n1 = Evaluator::otn(object1);
+                let n2 = Evaluator::otn(object2);
                 match (n1, n2) {
                     (Ok(n1), Ok(n2)) => Object::Boolean(n1 >= n2),
                     (Err(err), _) | (_, Err(err)) => err,
                 }
             }
             InfixOp::Gt => {
-                let n1 = self.otn(object1);
-                let n2 = self.otn(object2);
+                let n1 = Evaluator::otn(object1);
+                let n2 = Evaluator::otn(object2);
                 match (n1, n2) {
                     (Ok(n1), Ok(n2)) => Object::Boolean(n1 > n2),
                     (Err(err), _) | (_, Err(err)) => err,
                 }
             }
             InfixOp::Leq => {
-                let n1 = self.otn(object1);
-                let n2 = self.otn(object2);
+                let n1 = Evaluator::otn(object1);
+                let n2 = Evaluator::otn(object2);
                 match (n1, n2) {
                     (Ok(n1), Ok(n2)) => Object::Boolean(n1 <= n2),
                     (Err(err), _) | (_, Err(err)) => err,
                 }
             }
             InfixOp::Lt => {
-                let n1 = self.otn(object1);
-                let n2 = self.otn(object2);
+                let n1 = Evaluator::otn(object1);
+                let n2 = Evaluator::otn(object2);
                 match (n1, n2) {
                     (Ok(n1), Ok(n2)) => Object::Boolean(n1 < n2),
                     (Err(err), _) | (_, Err(err)) => err,
                 }
             }
             InfixOp::Range => {
-                let n1 = self.otn(object1);
-                let n2 = self.otn(object2);
+                let n1 = Evaluator::otn(object1);
+                let n2 = Evaluator::otn(object2);
                 match (n1, n2) {
                     (Ok(n1), Ok(n2)) => {
                         let mut elements = vec![];
@@ -439,16 +439,16 @@ impl Evaluator {
                 }
             }
             InfixOp::Or => {
-                let b1 = self.otb(object1);
-                let b2 = self.otb(object2);
+                let b1 = Evaluator::otb(object1);
+                let b2 = Evaluator::otb(object2);
                 match (b1, b2) {
                     (Ok(b1), Ok(b2)) => Object::Boolean(b1 || b2),
                     (Err(err), _) | (_, Err(err)) => err,
                 }
             }
             InfixOp::And => {
-                let b1 = self.otb(object1);
-                let b2 = self.otb(object2);
+                let b1 = Evaluator::otb(object1);
+                let b2 = Evaluator::otb(object2);
                 match (b1, b2) {
                     (Ok(b1), Ok(b2)) => Object::Boolean(b1 && b2),
                     (Err(err), _) | (_, Err(err)) => err,
@@ -468,7 +468,7 @@ impl Evaluator {
 
     pub fn eval_call(&mut self, fn_expr: Expression, args_expr: Vec<Expression>) -> Object {
         let fn_object = self.eval_expr(fn_expr);
-        let fn_ = self.otf(fn_object);
+        let fn_ = Evaluator::otf(fn_object);
         match fn_ {
             Object::Function(params, filter, body, f_env) => {
                 self.eval_fn_call(args_expr, params, filter, body, &f_env)
@@ -510,7 +510,7 @@ impl Evaluator {
             let object = match filter.clone() {
                 Some(f) => {
                     let matched = self.eval_expr(f);
-                    match self.otb(matched) {
+                    match Evaluator::otb(matched) {
                         Ok(b) => {
                             if b {
                                 self.eval_blockstmt(body)
@@ -607,14 +607,14 @@ impl Evaluator {
     fn eval_pair(&mut self, tuple: (Expression, Expression)) -> (Object, Object) {
         let (l, e) = tuple;
         let lo = self.eval_expr(l);
-        let hash = self.oth(lo);
+        let hash = Evaluator::oth(lo);
         let object = self.eval_expr(e);
         (hash, object)
     }
 
     pub fn eval_index(&mut self, target: Object, key: Object) -> Object {
         match target {
-            Object::Array(arr) => match self.otn(key) {
+            Object::Array(arr) => match Evaluator::otn(key) {
                 Ok(index_number) => arr
                     .into_iter()
                     .nth(index_number as usize)
@@ -622,7 +622,7 @@ impl Evaluator {
                 Err(err) => err,
             },
             Object::Dictionary(mut hash) => {
-                let name = self.oth(key);
+                let name = Evaluator::oth(key);
                 match name {
                     Object::Error(_) => name,
                     _ => hash.remove(&name).unwrap_or(Object::Null),
@@ -632,7 +632,7 @@ impl Evaluator {
         }
     }
 
-    pub fn otb(&mut self, object: Object) -> Result<bool, Object> {
+    pub fn otb(object: Object) -> Result<bool, Object> {
         match object {
             Object::Boolean(b) => Ok(b),
             Object::Error(s) => Err(Object::Error(s)),
@@ -640,7 +640,7 @@ impl Evaluator {
         }
     }
 
-    pub fn otn(&mut self, object: Object) -> Result<f64, Object> {
+    pub fn otn(object: Object) -> Result<f64, Object> {
         match object {
             Object::Number(n) => Ok(n),
             Object::Error(s) => Err(Object::Error(s)),
@@ -648,7 +648,7 @@ impl Evaluator {
         }
     }
 
-    pub fn otf(&mut self, object: Object) -> Object {
+    pub fn otf(object: Object) -> Object {
         match object {
             Object::Function(_, _, _, _) | Object::Builtin(_, _, _) => object,
             Object::Error(s) => Object::Error(s),
@@ -656,7 +656,7 @@ impl Evaluator {
         }
     }
 
-    pub fn oth(&mut self, object: Object) -> Object {
+    pub fn oth(object: Object) -> Object {
         match object {
             Object::Number(n) => Object::Number(n),
             Object::Boolean(b) => Object::Boolean(b),
