@@ -1,0 +1,7 @@
+mtu(jina, mwaka_wa_kuzaliwa) {
+    rejesha { "jina" : jina, "umri": 2023 - mwaka_wa_kuzaliwa }
+}
+
+sam = mtu("Sam", 1998)
+
+andika(sam)
