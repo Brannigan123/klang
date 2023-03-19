@@ -1,5 +1,2 @@
-
 jina = soma("Jina lako nani?")
-ujumbe = "Jambo $jina"
-
-andika(ujumbe)
+andika("Jambo $jina")

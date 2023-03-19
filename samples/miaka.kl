@@ -4,4 +4,5 @@ mtu(jina, mwaka_wa_kuzaliwa) {
 
 sam = mtu("Sam", 1998)
 
-andika(sam)
+andika(sam.umri)
+andika(sam["umri"])

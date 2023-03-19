@@ -1,5 +1,4 @@
 fac(n) -> n == 1 ? 1 : n * fac(n - 1)
 
-nambari = soma_namba("Weka nambari")
-
-andika("fac($nambari) = ${fac(nambari)}")
+n = soma_namba("Weka nambari")
+andika("fac($n) = ${fac(n)}")
