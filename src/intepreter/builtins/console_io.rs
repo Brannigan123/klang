@@ -1,4 +1,4 @@
-use text_io::read;
+use text_io::{read, try_read};
 
 use crate::intepreter::{obj::Object, Evaluator};
 
@@ -27,8 +27,10 @@ pub fn bread_num_fn(args: Vec<Object>) -> Result<Object, String> {
     match args.get(0) {
         Some(o) => {
             println!("{}", Evaluator::ots(o.clone()));
-            let input: f64 = read!("{}\n");
-            Ok(Object::Number(input))
+            let input: Result<f64, text_io::Error> = try_read!("{}\n");
+            input
+                .map(Object::Number)
+                .map_err(|_| String::from("Could not interpret input as a number."))
         }
         _ => Err(String::from("")), // TODO error message
     }
