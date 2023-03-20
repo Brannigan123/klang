@@ -11,7 +11,7 @@ use crate::parser::ast::{
 };
 
 use self::env::Environment;
-use self::obj::{BuiltinFunction, Object};
+use self::obj::{BuiltinFunction, ErrorEntry, Object};
 
 pub struct Evaluator {
     env: Rc<RefCell<Environment>>,
@@ -42,7 +42,11 @@ impl Evaluator {
         let var = borrow_env.get(&name);
         match var {
             Some(o) => o,
-            None => Object::Error(format!("identifier not found: {}", name)),
+            None => Object::Error(ErrorEntry {
+                position: pos,
+                message: format!("identifier not found: {}", name),
+                parents: vec![],
+            }),
         }
     }
 
@@ -114,31 +118,50 @@ impl Evaluator {
     }
 
     fn eval_let_stmt(&mut self, expression: Expression, ident: Vec<Identifier>) -> Object {
+        let pos = expression.position();
         let object = self.eval_expr(expression);
         match ident.len() {
-            1 => {
-                self.register_ident(ident.into_iter().next().unwrap(), object);
-                Object::Null
+            1 => self.register_ident(ident.into_iter().next().unwrap(), object),
+            _ => {
+                let mut errors = vec![];
+                match object.clone() {
+                    Object::Array(elements) | Object::Tuple(elements) => {
+                        for (id, val) in ident.into_iter().zip(elements.into_iter()) {
+                            if let Object::Error(e) = self.register_ident(id, val) {
+                                errors.push(e);
+                            }
+                        }
+                    }
+                    Object::Dictionary(entries) => {
+                        for id in ident {
+                            let value = self.eval_index(
+                                pos,
+                                Object::Dictionary(entries.clone()),
+                                Object::String(id.clone().0),
+                            );
+                            if let Object::Error(e) = self.register_ident(id, value) {
+                                errors.push(e);
+                            }
+                        }
+                    }
+                    _ => {
+                        errors.push(ErrorEntry {
+                            position: pos,
+                            message: format!("Can not destructure: {}", object),
+                            parents: vec![],
+                        });
+                    } //TODO error message
+                }
+                if errors.is_empty() {
+                    object
+                } else {
+                    Object::Error(ErrorEntry {
+                        position: pos,
+                        message: format!("Can not assign value"),
+                        parents: errors,
+                    })
+                }
             }
-            _ => match object {
-                Object::Array(elements) | Object::Tuple(elements) => {
-                    for (id, val) in ident.into_iter().zip(elements.into_iter()) {
-                        self.register_ident(id, val);
-                    }
-                    Object::Null
-                }
-                Object::Dictionary(entries) => {
-                    for id in ident {
-                        let value = self.eval_index(
-                            Object::Dictionary(entries.clone()),
-                            Object::String(id.clone().0),
-                        );
-                        self.register_ident(id, value);
-                    }
-                    Object::Null
-                }
-                _ => Object::Error(format!("Failed to destructure expression")), //TODO error message
-            },
         }
     }
 
@@ -184,7 +207,7 @@ impl Evaluator {
         filter: Option<Expression>,
         body: Statements,
     ) -> Object {
-        let object = self.eval_expr(iterable);
+        let object = self.eval_expr(iterable.clone());
         let items: Vec<Vec<Object>> = match object.clone() {
             Object::Array(elements) | Object::Tuple(elements) => {
                 elements.into_iter().map(|e| vec![e]).collect()
@@ -192,7 +215,7 @@ impl Evaluator {
             Object::Dictionary(entries) => entries
                 .into_keys()
                 .map(|k| {
-                    let v = self.eval_index(object.clone(), k.clone());
+                    let v = self.eval_index(iterable.position(), object.clone(), k.clone());
                     vec![k, v]
                 })
                 .collect(),
@@ -201,7 +224,13 @@ impl Evaluator {
                 .into_iter()
                 .map(|c| vec![Object::String(c.to_string())])
                 .collect(),
-            _ => return Object::Error(format!("Expected an iterable")), //TODO error message
+            _ => {
+                return Object::Error(ErrorEntry {
+                    position: iterable.position(),
+                    message: format!("Expected an iterable. Found: {}", object),
+                    parents: vec![],
+                })
+            } //TODO error message
         };
         for item in items {
             for (id, val) in loop_vars.clone().into_iter().zip(item.into_iter()) {
@@ -218,9 +247,8 @@ impl Evaluator {
                     }
                 }
                 let res = self.eval_blockstmt(body.clone());
-                match res {
-                    Object::ReturnValue(_) | Object::Error(_) => return res,
-                    _ => {}
+                if res.is_returned() || res.is_error() {
+                    return res;
                 }
             }
         }
@@ -255,9 +283,8 @@ impl Evaluator {
                 }
             }
             let res = self.eval_blockstmt(body.clone());
-            match res {
-                Object::ReturnValue(_) | Object::Error(_) => return res,
-                _ => {}
+            if res.is_returned() || res.is_error() {
+                return res;
             }
         }
 
@@ -297,8 +324,8 @@ impl Evaluator {
             } => {
                 let mut val = self.eval_expr(*indexed);
                 for arg in args {
-                    let argv = self.eval_expr(arg);
-                    val = self.eval_index(val, argv);
+                    let argv = self.eval_expr(arg.clone());
+                    val = self.eval_index(arg.position(), val, argv);
                 }
                 val
             }
@@ -307,8 +334,8 @@ impl Evaluator {
                 object,
                 name,
             } => {
-                let indexed = self.eval_expr(*object);
-                self.eval_index(indexed, Object::String(name.0))
+                let indexed = self.eval_expr(*object.clone());
+                self.eval_index(object.position(), indexed, Object::String(name.0))
             }
             Expression::NumberLiteral(_, n) => Object::Number(n),
             Expression::BooleanLiteral(_, b) => Object::Boolean(b),
@@ -365,9 +392,9 @@ impl Evaluator {
 
     pub fn eval_infix(&mut self, infix: &InfixOp, expr1: Expression, expr2: Expression) -> Object {
         let object1 = self.eval_expr(expr1);
-        let object2 = self.eval_expr(expr2);
+        let object2 = self.eval_expr(expr2.clone());
         match *infix {
-            InfixOp::Plus => self.object_add(object1, object2),
+            InfixOp::Plus => self.object_add(expr2.position(), object1, object2),
             InfixOp::Minus => {
                 let n1 = Evaluator::otn(object1);
                 let n2 = Evaluator::otn(object2);
@@ -489,14 +516,14 @@ impl Evaluator {
     }
 
     pub fn eval_call(&mut self, fn_expr: Expression, args_expr: Vec<Expression>) -> Object {
-        let fn_object = self.eval_expr(fn_expr);
+        let fn_object = self.eval_expr(fn_expr.clone());
         let fn_ = Evaluator::otf(fn_object);
         match fn_ {
             Object::Function(params, filter, body, f_env) => {
-                self.eval_fn_call(args_expr, params, filter, body, &f_env)
+                self.eval_fn_call(fn_expr.position(), args_expr, params, filter, body, &f_env)
             }
             Object::Builtin(_, num_params, b_fn) => {
-                self.eval_builtin_call(args_expr, num_params, b_fn)
+                self.eval_builtin_call(fn_expr.position(), args_expr, num_params, b_fn)
             }
             o_err => o_err,
         }
@@ -504,6 +531,7 @@ impl Evaluator {
 
     fn eval_fn_call(
         &mut self,
+        pos: ASTNodePosition,
         args_expr: Vec<Expression>,
         params: IdentifierList,
         filter: Option<Expression>,
@@ -511,11 +539,15 @@ impl Evaluator {
         f_env: &Rc<RefCell<Environment>>,
     ) -> Object {
         if args_expr.len() != params.len() {
-            Object::Error(format!(
-                "wrong number of arguments: {} expected but {} given",
-                params.len(),
-                args_expr.len()
-            ))
+            Object::Error(ErrorEntry {
+                position: pos,
+                message: format!(
+                    "Wrong number of arguments: {} expected but {} given",
+                    params.len(),
+                    args_expr.len()
+                ),
+                parents: vec![],
+            })
         } else {
             let args = args_expr
                 .into_iter()
@@ -531,13 +563,17 @@ impl Evaluator {
 
             let object = match filter.clone() {
                 Some(f) => {
-                    let matched = self.eval_expr(f);
+                    let matched = self.eval_expr(f.clone());
                     match Evaluator::otb(matched) {
                         Ok(b) => {
                             if b {
                                 self.eval_blockstmt(body)
                             } else {
-                                Object::Error(format!("Function failed to pass filter"))
+                                Object::Error(ErrorEntry {
+                                    position: f.position(),
+                                    message: format!("Failed to match function filter"),
+                                    parents: vec![],
+                                })
                             }
                         }
                         Err(err) => err,
@@ -553,22 +589,33 @@ impl Evaluator {
 
     fn eval_builtin_call(
         &mut self,
+        pos: ASTNodePosition,
         args_expr: Vec<Expression>,
         num_params: usize,
         b_fn: BuiltinFunction,
     ) -> Object {
         if args_expr.len() != num_params {
-            Object::Error(format!(
-                "wrong number of arguments: {} expected but {} given",
-                num_params,
-                args_expr.len()
-            ))
+            Object::Error(ErrorEntry {
+                position: pos,
+                message: format!(
+                    "Wrong number of arguments: {} expected but {} given",
+                    num_params,
+                    args_expr.len()
+                ),
+                parents: vec![],
+            })
         } else {
             let args = args_expr
                 .into_iter()
                 .map(|e| self.eval_expr(e))
                 .collect::<Vec<_>>();
-            b_fn(args).unwrap_or_else(Object::Error)
+            b_fn(args).unwrap_or_else(|msg| {
+                Object::Error(ErrorEntry {
+                    position: pos,
+                    message: msg,
+                    parents: vec![],
+                })
+            })
         }
     }
 
@@ -577,7 +624,7 @@ impl Evaluator {
         for entry in entries {
             match entry {
                 ArrayEntry::Single(e) => new_vec.push(self.eval_expr(e)),
-                ArrayEntry::Spread(e) => match self.eval_expr(e) {
+                ArrayEntry::Spread(e) => match self.eval_expr(e.clone()) {
                     Object::Array(elements) | Object::Tuple(elements) => {
                         elements.into_iter().for_each(|e| new_vec.push(e))
                     }
@@ -589,24 +636,32 @@ impl Evaluator {
                         .into_iter()
                         .map(|c| Object::String(c.to_string()))
                         .for_each(|e| new_vec.push(e)),
-                    _ => return Object::Error(format!("Expected an iterable")),
+                    _ => new_vec.push(Object::Error(ErrorEntry {
+                        position: e.position(),
+                        message: format!("Expected an iterable"),
+                        parents: vec![],
+                    })),
                 },
             };
         }
-        Object::Array(new_vec)
+        maybe_extract_errors(new_vec, Object::Array, format!("Failed to create array"))
     }
 
-    pub fn eval_tuple(&mut self, exprs: Vec<Expression>) -> Object {
-        let new_vec = exprs.into_iter().map(|e| self.eval_expr(e)).collect();
-        Object::Tuple(new_vec)
-    }
-
-    pub fn object_add(&mut self, object1: Object, object2: Object) -> Object {
+    pub fn object_add(&mut self, pos: ASTNodePosition, object1: Object, object2: Object) -> Object {
         match (object1, object2) {
             (Object::Number(n1), Object::Number(n2)) => Object::Number(n1 + n2),
             (Object::String(s1), Object::String(s2)) => Object::String(s1 + &s2),
-            (Object::Error(s), _) | (_, Object::Error(s)) => Object::Error(s),
-            (x, y) => Object::Error(format!("{:?} and {:?} are not addable", x, y)),
+            (Object::Error(e1), Object::Error(e2)) => Object::Error(ErrorEntry {
+                position: pos,
+                message: format!("Operation failed."),
+                parents: vec![e1, e2],
+            }),
+            (Object::Error(e), _) | (_, Object::Error(e)) => Object::Error(e),
+            (x, y) => Object::Error(ErrorEntry {
+                position: pos,
+                message: format!("Operator not defined on arguments: '{}' and '{}'", x, y),
+                parents: vec![],
+            }),
         }
     }
 
@@ -615,15 +670,28 @@ impl Evaluator {
         for entry in entries {
             match entry {
                 DictionaryEntry::Single(k, v) => new_vec.push(self.eval_pair((k, v))),
-                DictionaryEntry::Spread(e) => match self.eval_expr(e) {
-                    Object::Dictionary(addditional_entries) => addditional_entries
-                        .into_iter()
-                        .for_each(|e| new_vec.push(e)),
-                    _ => return Object::Error(format!("Expected an iterable")),
-                },
+                DictionaryEntry::Spread(e) => {
+                    let object = self.eval_expr(e.clone());
+                    match object {
+                        Object::Dictionary(addditional_entries) => addditional_entries
+                            .into_iter()
+                            .for_each(|e| new_vec.push(e)),
+                        _ => {
+                            return Object::Error(ErrorEntry {
+                                position: e.position(),
+                                message: format!("Expected an iterable. Found {}", object),
+                                parents: vec![],
+                            })
+                        }
+                    }
+                }
             };
         }
-        Object::Dictionary(new_vec.into_iter().collect())
+        maybe_extract_pair_errors(
+            new_vec,
+            |p| Object::Dictionary(p.into_iter().collect()),
+            format!("Failed to create dictionary"),
+        )
     }
 
     fn eval_pair(&mut self, tuple: (Expression, Expression)) -> (Object, Object) {
@@ -634,7 +702,7 @@ impl Evaluator {
         (hash, object)
     }
 
-    pub fn eval_index(&mut self, target: Object, key: Object) -> Object {
+    pub fn eval_index(&mut self, pos: ASTNodePosition, target: Object, key: Object) -> Object {
         match target {
             Object::Array(arr) => match Evaluator::otn(key) {
                 Ok(index_number) => arr
@@ -650,7 +718,11 @@ impl Evaluator {
                     _ => hash.remove(&name).unwrap_or(Object::Null),
                 }
             }
-            o => Object::Error(format!("unexpected index target: {}", o)),
+            o => Object::Error(ErrorEntry {
+                position: pos,
+                message: format!("Can not access index given {}", o),
+                parents: vec![],
+            }),
         }
     }
 
@@ -671,11 +743,19 @@ impl Evaluator {
     pub fn otn(object: Object) -> Result<f64, Object> {
         match object {
             Object::Number(n) => Ok(n),
-            Object::String(s) => s
-                .parse()
-                .map_err(|_| Object::Error(format!("{} is not an Number", s))),
+            Object::String(s) => s.parse().map_err(|_| {
+                Object::Error(ErrorEntry {
+                    position: (0, 0),
+                    message: format!("Expected a number. Found {}", s),
+                    parents: vec![],
+                })
+            }),
             Object::Error(s) => Err(Object::Error(s)),
-            i => Err(Object::Error(format!("{} is not an Number", i))),
+            i => Err(Object::Error(ErrorEntry {
+                position: (0, 0),
+                message: format!("Expected a number. Found {}", i),
+                parents: vec![],
+            })),
         }
     }
 
@@ -683,7 +763,11 @@ impl Evaluator {
         match object {
             Object::Function(_, _, _, _) | Object::Builtin(_, _, _) => object,
             Object::Error(s) => Object::Error(s),
-            f => Object::Error(format!("{} is not a valid function", f)),
+            f => Object::Error(ErrorEntry {
+                position: (0, 0),
+                message: format!("Expected a function. Found {}", f),
+                parents: vec![],
+            }),
         }
     }
 
@@ -693,11 +777,71 @@ impl Evaluator {
             Object::Boolean(b) => Object::Boolean(b),
             Object::String(s) => Object::String(s),
             Object::Error(s) => Object::Error(s),
-            x => Object::Error(format!("{} is not hashable", x)),
+            x => Object::Error(ErrorEntry {
+                position: (0, 0),
+                message: format!("Expected a hashable value. Found {}", x),
+                parents: vec![],
+            }),
         }
     }
 
     pub fn ots(object: Object) -> String {
         format!("{}", object)
+    }
+}
+
+fn maybe_extract_errors<F>(objs: Vec<Object>, to_object: F, error_msg: String) -> Object
+where
+    F: Fn(Vec<Object>) -> Object,
+{
+    let errors: Vec<ErrorEntry> = objs
+        .iter()
+        .filter_map(|o| {
+            if let Object::Error(e) = o {
+                Some(e.clone())
+            } else {
+                None
+            }
+        })
+        .collect();
+    if errors.is_empty() {
+        to_object(objs)
+    } else {
+        Object::Error(ErrorEntry {
+            position: errors.first().unwrap().position,
+            message: error_msg,
+            parents: errors,
+        })
+    }
+}
+
+fn maybe_extract_pair_errors<F>(
+    objs: Vec<(Object, Object)>,
+    to_object: F,
+    error_msg: String,
+) -> Object
+where
+    F: Fn(Vec<(Object, Object)>) -> Object,
+{
+    let errors: Vec<ErrorEntry> = objs
+        .iter()
+        .filter_map(|o| match o {
+            (Object::Error(e1), Object::Error(e2)) => Some(ErrorEntry {
+                position: e1.position,
+                message: format!("Failed to create pair"),
+                parents: vec![e1.clone(), e2.clone()],
+            }),
+            (Object::Error(e), _) | (_, Object::Error(e)) => Some(e.clone()),
+            _ => None,
+        })
+        .collect();
+    if errors.is_empty() {
+        to_object(objs)
+    } else {
+        Object::Error(ErrorEntry {
+            position: errors.first().unwrap().position,
+            message: error_msg,
+            parents: errors,
+        })
     }
 }

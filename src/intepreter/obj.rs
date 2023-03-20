@@ -4,7 +4,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
-use crate::parser::ast::{Expression, Identifier, Statements};
+use crate::parser::ast::{ASTNodePosition, Expression, Identifier, Statements};
 
 use super::env::Environment;
 
@@ -25,7 +25,14 @@ pub enum Object {
     Builtin(String, usize, BuiltinFunction),
     Null,
     ReturnValue(Box<Object>),
-    Error(String),
+    Error(ErrorEntry),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ErrorEntry {
+    pub position: ASTNodePosition,
+    pub message: String,
+    pub parents: Vec<ErrorEntry>,
 }
 
 pub type BuiltinFunction = fn(Vec<Object>) -> Result<Object, String>;
@@ -44,6 +51,20 @@ impl Object {
             Object::ReturnValue(o) => *o,
             o => o,
         }
+    }
+}
+
+impl fmt::Display for ErrorEntry {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "Error[{},{}]: {}",
+            self.position.0, self.position.1, self.message
+        )?;
+        for parent in self.parents.clone() {
+            write!(f, "{}", indent::indent_all_by(1, parent.to_string()))?
+        }
+        Ok(())
     }
 }
 
@@ -99,7 +120,9 @@ impl fmt::Display for Object {
             Object::Builtin(ref name, _, _) => write!(f, "[built-in function: {}]", *name),
             Object::Null => write!(f, "null"),
             Object::ReturnValue(ref o) => write!(f, "{}", *o),
-            Object::Error(ref s) => write!(f, "Error: {}", s),
+            Object::Error(ref e) => {
+                write!(f, "{}", e)
+            }
         }
     }
 }

@@ -2,7 +2,7 @@ use pest::Parser;
 use std::{fs, path::PathBuf};
 
 use crate::{
-    intepreter::{obj::Object, Evaluator},
+    intepreter::Evaluator,
     parser::{gen_ast, KlangParser, Rule},
 };
 
@@ -30,9 +30,11 @@ pub fn run(source: String) -> Result<(), String> {
         Ok(mut res) => {
             let mut evaluator = Evaluator::new();
             let ast = gen_ast(res.next().unwrap());
-            match evaluator.eval_program(ast) {
-                Object::Error(e) => Err(e),
-                _ => Ok(()),
+            let ret = evaluator.eval_program(ast);
+            if ret.is_error() {
+                Err(ret.to_string())
+            } else {
+                Ok(())
             }
         }
         Err(err) => Err(format!("{:#?}", err)),
