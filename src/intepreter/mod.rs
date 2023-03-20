@@ -65,7 +65,7 @@ impl Evaluator {
             _ => {
                 let s = prog.remove(0);
                 let object = self.eval_statement(s);
-                if object.is_returned() {
+                if object.is_returned() || object.is_error() {
                     object
                 } else {
                     self.eval_blockstmt(prog)

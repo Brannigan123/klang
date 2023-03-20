@@ -31,6 +31,10 @@ pub enum Object {
 pub type BuiltinFunction = fn(Vec<Object>) -> Result<Object, String>;
 
 impl Object {
+    pub fn is_error(&self) -> bool {
+        matches!(*self, Object::Error(_))
+    }
+
     pub fn is_returned(&self) -> bool {
         matches!(*self, Object::ReturnValue(_))
     }
