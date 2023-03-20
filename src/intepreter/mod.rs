@@ -6,8 +6,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::parser::ast::{
-    ArrayEntry, DictionaryEntry, Expression, Identifier, IdentifierList, InfixOp, PrefixOp,
-    Program, Statement, Statements, StringPart,
+    ASTNodePosition, ArrayEntry, DictionaryEntry, Expression, Identifier, IdentifierList, InfixOp,
+    PrefixOp, Program, Statement, Statements, StringPart,
 };
 
 use self::env::Environment;
@@ -36,7 +36,7 @@ impl Evaluator {
         object
     }
 
-    pub fn eval_ident(&mut self, ident: Identifier) -> Object {
+    pub fn eval_ident(&mut self, ident: Identifier, pos: ASTNodePosition) -> Object {
         let Identifier(name) = ident;
         let borrow_env = self.env.borrow();
         let var = borrow_env.get(&name);
@@ -266,7 +266,7 @@ impl Evaluator {
 
     pub fn eval_expr(&mut self, expr: Expression) -> Object {
         match expr {
-            Expression::IdentifierExpr(_, i) => self.eval_ident(i),
+            Expression::IdentifierExpr(pos, i) => self.eval_ident(i, pos),
             Expression::PrefixExpr(_, prefix, expression) => self.eval_prefix(&prefix, *expression),
             Expression::InfixExpr(_, infix, expr1, expr2) => {
                 self.eval_infix(&infix, *expr1, *expr2)
@@ -291,7 +291,11 @@ impl Evaluator {
             Expression::ArrayExpr(_, exprs) => self.eval_array(exprs),
             Expression::TupleExpr(_, exprs) => self.eval_tuple(exprs),
             Expression::DictionaryExpr(_, hash_exprs) => self.eval_hash(hash_exprs),
-            Expression::IndexAccessExpr { pos: _, indexed, args } => {
+            Expression::IndexAccessExpr {
+                pos: _,
+                indexed,
+                args,
+            } => {
                 let mut val = self.eval_expr(*indexed);
                 for arg in args {
                     let argv = self.eval_expr(arg);
@@ -299,7 +303,11 @@ impl Evaluator {
                 }
                 val
             }
-            Expression::PropertyAccessExpr { pos: _, object, name } => {
+            Expression::PropertyAccessExpr {
+                pos: _,
+                object,
+                name,
+            } => {
                 let indexed = self.eval_expr(*object);
                 self.eval_index(indexed, Object::String(name.0))
             }
@@ -310,8 +318,8 @@ impl Evaluator {
                 for part in parts {
                     match part {
                         StringPart::Literal(_, s) => string = format!("{}{}", string, s),
-                        StringPart::Variable(_, i) => {
-                            string = format!("{}{}", string, self.eval_ident(i))
+                        StringPart::Variable(pos, i) => {
+                            string = format!("{}{}", string, self.eval_ident(i, pos))
                         }
                         StringPart::Expression(_, e) => {
                             string = format!("{}{}", string, self.eval_expr(e))
