@@ -289,7 +289,6 @@ impl Evaluator {
                 args,
             } => self.eval_call(*callable, args),
             Expression::ArrayExpr(_, exprs) => self.eval_array(exprs),
-            Expression::TupleExpr(_, exprs) => self.eval_tuple(exprs),
             Expression::DictionaryExpr(_, hash_exprs) => self.eval_hash(hash_exprs),
             Expression::IndexAccessExpr {
                 pos: _,

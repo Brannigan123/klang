@@ -415,13 +415,6 @@ fn gen_primary_expr_ast(parsed: Pair<Rule>) -> Expression {
             }
             Expression::DictionaryExpr(pos, entries)
         }
-        Rule::tuple_literal => {
-            let mut entries = vec![];
-            for entry in parsed.into_inner() {
-                entries.push(gen_expr_ast(entry));
-            }
-            Expression::TupleExpr(pos, entries)
-        }
         Rule::string => {
             let mut parts = vec![];
             for entry in parsed.into_inner() {

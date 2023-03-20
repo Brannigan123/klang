@@ -97,7 +97,7 @@ call_arguments      = { "(" ~ expr_list? ~ ")" }
 index_arguments     = { "[" ~ expr_list? ~ "]" }
 named_member_access = { "." ~ identifier }
 
-primary = _{ number | false_literal | true_literal | string | identifier | array_literal | dictionary_literal | tuple_literal }
+primary = _{ number | false_literal | true_literal | string | identifier | array_literal | dictionary_literal }
 
 string                          = ${ "\"" ~ string_inner_part* ~ "\"" }
 string_inner_part               = _{ string_expression_interpolation | string_variable_interpolation | string_literal }
@@ -110,5 +110,3 @@ array_entry   = { ".."? ~ expr }
 
 dictionary_literal = { "{" ~ (dictionary_entry ~ ("," ~ dictionary_entry)*)? ~ "}" }
 dictionary_entry   = { (".." ~ expr) | (expr ~ ":" ~ expr) }
-
-tuple_literal = { "(" ~ expr_list ~ ")" }

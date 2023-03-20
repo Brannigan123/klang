@@ -71,7 +71,6 @@ pub enum Expression {
     StringExpr(ASTNodePosition, Vec<StringPart>),
     ArrayExpr(ASTNodePosition, Vec<ArrayEntry>),
     DictionaryExpr(ASTNodePosition, Vec<DictionaryEntry>),
-    TupleExpr(ASTNodePosition, Vec<Expression>),
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -151,7 +150,6 @@ impl Expression {
             Expression::StringExpr(pos, _) => *pos,
             Expression::ArrayExpr(pos, _) => *pos,
             Expression::DictionaryExpr(pos, _) => *pos,
-            Expression::TupleExpr(pos, _) => *pos,
         }
     }
 }
