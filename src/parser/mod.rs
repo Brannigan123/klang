@@ -28,6 +28,7 @@ pub fn gen_ast(parsed: Pair<Rule>) -> Program {
 }
 
 fn gen_stmt_ast(parsed: Pair<Rule>) -> Statement {
+    let pos = parsed.line_col();
     match parsed.as_rule() {
         Rule::if_statement => {
             let mut parts = parsed.into_inner();
@@ -56,6 +57,7 @@ fn gen_stmt_ast(parsed: Pair<Rule>) -> Statement {
                 }
             }
             Statement::IfStmt {
+                pos,
                 cond,
                 consequence: consequence,
                 alt_conds,
@@ -80,6 +82,7 @@ fn gen_stmt_ast(parsed: Pair<Rule>) -> Statement {
                 body.push(gen_stmt_ast(stmt));
             }
             Statement::ForInStmt {
+                pos,
                 loop_vars,
                 iterable,
                 filter,
@@ -101,30 +104,35 @@ fn gen_stmt_ast(parsed: Pair<Rule>) -> Statement {
             for stmt in parts {
                 body.push(gen_stmt_ast(stmt));
             }
-            Statement::WhileStmt { cond, filter, body }
+            Statement::WhileStmt {
+                pos,
+                cond,
+                filter,
+                body,
+            }
         }
         Rule::variable_declaration => {
             let mut parts = parsed.into_inner();
             let ids = gen_identifier_nodes(parts.next().unwrap());
             let expr = gen_expr_ast(parts.next().unwrap());
-            Statement::LetStmt(ids, expr)
+            Statement::LetStmt(pos, ids, expr)
         }
         Rule::function_declaration => {
             let mut parts = parsed.into_inner();
             let id = gen_identifier_node(parts.next().unwrap());
             let func = gen_function_expr(parts.next().unwrap());
-            Statement::LetStmt(vec![id], func)
+            Statement::LetStmt(pos, vec![id], func)
         }
         Rule::expr_statement => {
             let expr = gen_expr_ast(parsed.into_inner().next().unwrap());
-            Statement::ExpressionStmt(expr)
+            Statement::ExpressionStmt(pos, expr)
         }
         Rule::return_statement => {
             let expr = match parsed.into_inner().nth(1) {
                 Some(e) => Some(gen_expr_ast(e)),
                 None => None,
             };
-            Statement::ReturnStmt(expr)
+            Statement::ReturnStmt(pos, expr)
         }
         _ => unreachable!(),
     }
@@ -137,6 +145,7 @@ fn gen_expr_ast(parsed: Pair<Rule>) -> Expression {
             let mut expr = gen_or_expr_ast(parts.next().unwrap());
             if let (Some(true_branch), Some(false_branch)) = (parts.next(), parts.next()) {
                 expr = Expression::IfExpr {
+                    pos: expr.position(),
                     cond: Box::new(expr),
                     consequence: Box::new(gen_expr_ast(true_branch)),
                     fallback_consequnce: Box::new(gen_expr_ast(false_branch)),
@@ -155,6 +164,7 @@ fn gen_or_expr_ast(parsed: Pair<Rule>) -> Expression {
             let mut expr = gen_and_expr_ast(parts.next().unwrap());
             for condition in parts {
                 expr = Expression::InfixExpr(
+                    expr.position(),
                     ast::InfixOp::Or,
                     Box::new(expr),
                     Box::new(gen_and_expr_ast(condition)),
@@ -173,6 +183,7 @@ fn gen_and_expr_ast(parsed: Pair<Rule>) -> Expression {
             let mut expr = gen_equality_expr_ast(parts.next().unwrap());
             for condition in parts {
                 expr = Expression::InfixExpr(
+                    expr.position(),
                     ast::InfixOp::And,
                     Box::new(expr),
                     Box::new(gen_equality_expr_ast(condition)),
@@ -196,6 +207,7 @@ fn gen_equality_expr_ast(parsed: Pair<Rule>) -> Expression {
                     _ => unreachable!(),
                 };
                 expr = Expression::InfixExpr(
+                    expr.position(),
                     op,
                     Box::new(expr),
                     Box::new(gen_comparison_expr_ast(parts.next().unwrap())),
@@ -221,6 +233,7 @@ fn gen_comparison_expr_ast(parsed: Pair<Rule>) -> Expression {
                     _ => unreachable!(),
                 };
                 expr = Expression::InfixExpr(
+                    expr.position(),
                     op,
                     Box::new(expr),
                     Box::new(gen_range_expr_ast(parts.next().unwrap())),
@@ -239,6 +252,7 @@ fn gen_range_expr_ast(parsed: Pair<Rule>) -> Expression {
             let mut expr = gen_term_expr_ast(parts.next().unwrap());
             if let Some(end) = parts.next() {
                 expr = Expression::InfixExpr(
+                    expr.position(),
                     ast::InfixOp::Range,
                     Box::new(expr),
                     Box::new(gen_range_expr_ast(end)),
@@ -262,6 +276,7 @@ fn gen_term_expr_ast(parsed: Pair<Rule>) -> Expression {
                     _ => unreachable!(),
                 };
                 expr = Expression::InfixExpr(
+                    expr.position(),
                     op,
                     Box::new(expr),
                     Box::new(gen_factor_expr_ast(parts.next().unwrap())),
@@ -286,6 +301,7 @@ fn gen_factor_expr_ast(parsed: Pair<Rule>) -> Expression {
                     _ => unreachable!(),
                 };
                 expr = Expression::InfixExpr(
+                    expr.position(),
                     op,
                     Box::new(expr),
                     Box::new(gen_unary_expr_ast(parts.next().unwrap())),
@@ -298,16 +314,19 @@ fn gen_factor_expr_ast(parsed: Pair<Rule>) -> Expression {
 }
 
 fn gen_unary_expr_ast(parsed: Pair<Rule>) -> Expression {
+    let pos = parsed.line_col();
     match parsed.as_rule() {
         Rule::unary => {
             let mut parts = parsed.into_inner();
             let part1 = parts.next().unwrap();
             match part1.as_rule() {
                 Rule::not => Expression::PrefixExpr(
+                    pos,
                     PrefixOp::Not,
                     Box::new(gen_unary_expr_ast(parts.next().unwrap())),
                 ),
                 Rule::negate => Expression::PrefixExpr(
+                    pos,
                     PrefixOp::Negate,
                     Box::new(gen_unary_expr_ast(parts.next().unwrap())),
                 ),
@@ -319,6 +338,7 @@ fn gen_unary_expr_ast(parsed: Pair<Rule>) -> Expression {
 }
 
 fn gen_call_expr_ast(parsed: Pair<Rule>) -> Expression {
+    let pos = parsed.line_col();
     match parsed.as_rule() {
         Rule::call => {
             let mut parts = parsed.into_inner();
@@ -328,6 +348,7 @@ fn gen_call_expr_ast(parsed: Pair<Rule>) -> Expression {
                     Rule::call_arguments => {
                         let args: Vec<Expression> = access.into_inner().map(gen_expr_ast).collect();
                         expr = Expression::InvocationExpr {
+                            pos,
                             callable: Box::new(expr),
                             args,
                         }
@@ -335,12 +356,14 @@ fn gen_call_expr_ast(parsed: Pair<Rule>) -> Expression {
                     Rule::index_arguments => {
                         let args: Vec<Expression> = access.into_inner().map(gen_expr_ast).collect();
                         expr = Expression::IndexAccessExpr {
+                            pos,
                             indexed: Box::new(expr),
                             args,
                         }
                     }
                     Rule::named_member_access => {
                         expr = Expression::PropertyAccessExpr {
+                            pos,
                             object: Box::new(expr),
                             name: gen_identifier_node(access.into_inner().next().unwrap()),
                         }
@@ -355,13 +378,14 @@ fn gen_call_expr_ast(parsed: Pair<Rule>) -> Expression {
 }
 
 fn gen_primary_expr_ast(parsed: Pair<Rule>) -> Expression {
+    let pos = parsed.line_col();
     match parsed.as_rule() {
         Rule::number => {
-            Expression::NumberLiteral(parsed.as_span().as_str().parse::<f64>().unwrap())
+            Expression::NumberLiteral(pos, parsed.as_span().as_str().parse::<f64>().unwrap())
         }
-        Rule::false_literal => Expression::BooleanLiteral(false),
-        Rule::true_literal => Expression::BooleanLiteral(true),
-        Rule::identifier => Expression::IdentifierExpr(gen_identifier_node(parsed)),
+        Rule::false_literal => Expression::BooleanLiteral(pos, false),
+        Rule::true_literal => Expression::BooleanLiteral(pos, true),
+        Rule::identifier => Expression::IdentifierExpr(pos, gen_identifier_node(parsed)),
         Rule::function => gen_function_expr(parsed),
         Rule::array_literal => {
             let mut entries = vec![];
@@ -374,7 +398,7 @@ fn gen_primary_expr_ast(parsed: Pair<Rule>) -> Expression {
                     entries.push(ArrayEntry::Single(expr));
                 }
             }
-            Expression::ArrayExpr(entries)
+            Expression::ArrayExpr(pos, entries)
         }
         Rule::dictionary_literal => {
             let mut entries = vec![];
@@ -389,40 +413,44 @@ fn gen_primary_expr_ast(parsed: Pair<Rule>) -> Expression {
                     entries.push(DictionaryEntry::Single(key, value));
                 }
             }
-            Expression::DictionaryExpr(entries)
+            Expression::DictionaryExpr(pos, entries)
         }
         Rule::tuple_literal => {
             let mut entries = vec![];
             for entry in parsed.into_inner() {
                 entries.push(gen_expr_ast(entry));
             }
-            Expression::TupleExpr(entries)
+            Expression::TupleExpr(pos, entries)
         }
         Rule::string => {
             let mut parts = vec![];
             for entry in parsed.into_inner() {
                 match entry.as_rule() {
                     Rule::string_literal => parts.push(ast::StringPart::Literal(
+                        entry.line_col(),
                         entry.as_span().as_str().to_string(),
                     )),
                     Rule::string_expression_interpolation => {
-                        parts.push(ast::StringPart::Expression(gen_expr_ast(
-                            entry.into_inner().next().unwrap(),
-                        )))
+                        parts.push(ast::StringPart::Expression(
+                            entry.line_col(),
+                            gen_expr_ast(entry.into_inner().next().unwrap()),
+                        ))
                     }
                     Rule::string_variable_interpolation => parts.push(ast::StringPart::Variable(
+                        entry.line_col(),
                         gen_identifier_node(entry.into_inner().next().unwrap()),
                     )),
                     _ => unreachable!(),
                 }
             }
-            Expression::StringExpr(parts)
+            Expression::StringExpr(pos, parts)
         }
         _ => unreachable!(),
     }
 }
 
 fn gen_function_expr(parsed: Pair<Rule>) -> Expression {
+    let pos = parsed.line_col();
     match parsed.as_rule() {
         Rule::function => {
             let expr = parsed.into_inner().next().unwrap();
@@ -433,9 +461,10 @@ fn gen_function_expr(parsed: Pair<Rule>) -> Expression {
                         get_function_signature(parts.next().unwrap().into_inner());
                     let expr = gen_expr_ast(parts.nth(1).unwrap());
                     Expression::FunctionExpr {
+                        pos,
                         params,
                         filter: filter.map(Box::new),
-                        body: vec![Statement::ReturnStmt(Some(expr))],
+                        body: vec![Statement::ReturnStmt(expr.position(), Some(expr))],
                     }
                 }
                 Rule::compound_function => {
@@ -444,6 +473,7 @@ fn gen_function_expr(parsed: Pair<Rule>) -> Expression {
                         get_function_signature(parts.next().unwrap().into_inner());
                     let stmts: Vec<Statement> = parts.map(gen_stmt_ast).collect();
                     Expression::FunctionExpr {
+                        pos,
                         params,
                         filter: filter.map(Box::new),
                         body: stmts,

@@ -76,14 +76,15 @@ impl Evaluator {
 
     pub fn eval_statement(&mut self, stmt: Statement) -> Object {
         match stmt {
-            Statement::ExpressionStmt(expression) => self.eval_expr(expression),
-            Statement::ReturnStmt(expression) => Object::ReturnValue(Box::new(
+            Statement::ExpressionStmt(_, expression) => self.eval_expr(expression),
+            Statement::ReturnStmt(_, expression) => Object::ReturnValue(Box::new(
                 expression
                     .map(|e| self.eval_expr(e))
                     .unwrap_or(Object::Null),
             )),
-            Statement::LetStmt(ident, expression) => self.eval_let_stmt(expression, ident),
+            Statement::LetStmt(_, ident, expression) => self.eval_let_stmt(expression, ident),
             Statement::IfStmt {
+                pos: _,
                 cond,
                 consequence,
                 alt_conds,
@@ -97,12 +98,18 @@ impl Evaluator {
                 fallback_consequnce,
             ),
             Statement::ForInStmt {
+                pos: _,
                 loop_vars,
                 iterable,
                 filter,
                 body,
             } => self.eval_for_stmt(loop_vars, iterable, filter, body),
-            Statement::WhileStmt { cond, filter, body } => self.eval_while_stmt(cond, filter, body),
+            Statement::WhileStmt {
+                pos: _,
+                cond,
+                filter,
+                body,
+            } => self.eval_while_stmt(cond, filter, body),
         }
     }
 
@@ -259,24 +266,32 @@ impl Evaluator {
 
     pub fn eval_expr(&mut self, expr: Expression) -> Object {
         match expr {
-            Expression::IdentifierExpr(i) => self.eval_ident(i),
-            Expression::PrefixExpr(prefix, expression) => self.eval_prefix(&prefix, *expression),
-            Expression::InfixExpr(infix, expr1, expr2) => self.eval_infix(&infix, *expr1, *expr2),
+            Expression::IdentifierExpr(_, i) => self.eval_ident(i),
+            Expression::PrefixExpr(_, prefix, expression) => self.eval_prefix(&prefix, *expression),
+            Expression::InfixExpr(_, infix, expr1, expr2) => {
+                self.eval_infix(&infix, *expr1, *expr2)
+            }
             Expression::IfExpr {
                 cond,
+                pos: _,
                 consequence,
                 fallback_consequnce,
             } => self.eval_if_expr(*cond, *consequence, *fallback_consequnce),
             Expression::FunctionExpr {
+                pos: _,
                 params,
                 filter,
                 body,
             } => self.eval_fn(params, filter, body),
-            Expression::InvocationExpr { callable, args } => self.eval_call(*callable, args),
-            Expression::ArrayExpr(exprs) => self.eval_array(exprs),
-            Expression::TupleExpr(exprs) => self.eval_tuple(exprs),
-            Expression::DictionaryExpr(hash_exprs) => self.eval_hash(hash_exprs),
-            Expression::IndexAccessExpr { indexed, args } => {
+            Expression::InvocationExpr {
+                pos: _,
+                callable,
+                args,
+            } => self.eval_call(*callable, args),
+            Expression::ArrayExpr(_, exprs) => self.eval_array(exprs),
+            Expression::TupleExpr(_, exprs) => self.eval_tuple(exprs),
+            Expression::DictionaryExpr(_, hash_exprs) => self.eval_hash(hash_exprs),
+            Expression::IndexAccessExpr { pos: _, indexed, args } => {
                 let mut val = self.eval_expr(*indexed);
                 for arg in args {
                     let argv = self.eval_expr(arg);
@@ -284,21 +299,21 @@ impl Evaluator {
                 }
                 val
             }
-            Expression::PropertyAccessExpr { object, name } => {
+            Expression::PropertyAccessExpr { pos: _, object, name } => {
                 let indexed = self.eval_expr(*object);
                 self.eval_index(indexed, Object::String(name.0))
             }
-            Expression::NumberLiteral(n) => Object::Number(n),
-            Expression::BooleanLiteral(b) => Object::Boolean(b),
-            Expression::StringExpr(parts) => {
+            Expression::NumberLiteral(_, n) => Object::Number(n),
+            Expression::BooleanLiteral(_, b) => Object::Boolean(b),
+            Expression::StringExpr(_, parts) => {
                 let mut string = "".to_owned();
                 for part in parts {
                     match part {
-                        StringPart::Literal(s) => string = format!("{}{}", string, s),
-                        StringPart::Variable(i) => {
+                        StringPart::Literal(_, s) => string = format!("{}{}", string, s),
+                        StringPart::Variable(_, i) => {
                             string = format!("{}{}", string, self.eval_ident(i))
                         }
-                        StringPart::Expression(e) => {
+                        StringPart::Expression(_, e) => {
                             string = format!("{}{}", string, self.eval_expr(e))
                         }
                     }
