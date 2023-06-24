@@ -4,4 +4,5 @@ x = 10
 kama bado x >= 0 {
     andika(fib(x))
     x = x - 1
+rudisa x
 }
